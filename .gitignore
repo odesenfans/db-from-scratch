@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# REPL history file
+history.txt
+
+# IDE files
+.idea
+
+# Rust build files
+target
