@@ -9,6 +9,6 @@ members = [
 # Shared dependencies across all workspace crates
 [workspace.dependencies]
 # these are very likely to be used across all/most crates so pin the version for them all
-miette = "5.5.0"
+miette = { version="5.5.0", features= ["fancy"] }
 serde = { version = "1.0.151", features = ["derive"] }
 thiserror = "1.0.38"

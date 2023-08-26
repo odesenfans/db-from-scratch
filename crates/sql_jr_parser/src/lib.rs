@@ -1,3 +1,6 @@
+extern crate core;
+
 pub mod commands;
+pub mod error;
 pub mod parse;
-mod value;
+pub mod value;
