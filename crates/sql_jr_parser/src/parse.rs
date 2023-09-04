@@ -1,41 +1,28 @@
-use crate::error::{format_parse_error, FormattedError};
-use nom::bytes::complete::{tag_no_case, take_while1};
-use nom::character::complete::{char, multispace0};
-use nom::combinator::{all_consuming, map, peek};
-use nom::multi::separated_list1;
-use nom::sequence::{pair, tuple};
-use nom::{Finish, IResult};
+use nom::{
+    self,
+    bytes::complete::take_while1,
+    character::complete::{char, multispace0},
+    combinator::{all_consuming, map, peek},
+    multi::separated_list1,
+    sequence::{pair, tuple},
+    Finish, IResult,
+};
 use nom_locate::LocatedSpan;
+use nom_supreme::tag::complete::tag_no_case;
 
-// Use nom_locate's LocatedSpan as a wrapper around a string input
+use crate::error::{format_parse_error, FormattedError, MyParseError};
+
 pub type RawSpan<'a> = LocatedSpan<&'a str>;
 
-// the result for all of our parsers, they will have our span type as input and can have any output
-// this will use a default error type but we will change that later
-pub type ParseResult<'a, T> = IResult<RawSpan<'a>, T>;
+pub type ParseResult<'a, T> = IResult<RawSpan<'a>, T, MyParseError<'a>>;
 
-/// Run the given parser f on a comma seperated list
-pub(crate) fn comma_sep<'a, O, E, F>(
-    f: F,
-) -> impl FnMut(RawSpan<'a>) -> IResult<RawSpan<'a>, Vec<O>, E>
-where
-    F: nom::Parser<RawSpan<'a>, O, E>,
-    E: nom::error::ParseError<RawSpan<'a>>,
-{
-    separated_list1(tuple((multispace0, char(','), multispace0)), f)
-}
-
-pub(crate) fn identifier(i: RawSpan) -> ParseResult<String> {
-    map(take_while1(|c: char| c.is_alphanumeric()), |s: RawSpan| {
-        s.fragment().to_string()
-    })(i)
-}
-
-/// Implement the parse function to more easily convert a span into a SQL command
+/// Implement the parse function to more easily convert a span into a sql
+/// command
 pub trait Parse<'a>: Sized {
     /// Parse the given span into self
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self>;
 
+    // Helper method to convert a raw str into a raw span and parse
     fn parse_from_raw(input: &'a str) -> ParseResult<'a, Self> {
         let i = LocatedSpan::new(input);
         Self::parse(i)
@@ -48,6 +35,13 @@ pub trait Parse<'a>: Sized {
             Err(e) => Err(format_parse_error(i, e)),
         }
     }
+}
+
+/// Parse a unquoted sql identifier
+pub(crate) fn identifier(i: RawSpan) -> ParseResult<String> {
+    map(take_while1(|c: char| c.is_alphanumeric()), |s: RawSpan| {
+        s.fragment().to_string()
+    })(i)
 }
 
 /// Check if the input has the passed in tag
@@ -66,4 +60,14 @@ where
     LocatedSpan<&'a str>: nom::Compare<T>,
 {
     map(pair(peek(tag_no_case(peek_tag)), f), |(_, f_res)| f_res)
+}
+
+pub(crate) fn comma_sep<'a, O, E, F>(
+    f: F,
+) -> impl FnMut(RawSpan<'a>) -> IResult<RawSpan<'a>, Vec<O>, E>
+where
+    F: nom::Parser<RawSpan<'a>, O, E>,
+    E: nom::error::ParseError<RawSpan<'a>>,
+{
+    separated_list1(tuple((multispace0, char(','), multispace0)), f)
 }

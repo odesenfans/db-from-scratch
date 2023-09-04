@@ -1,5 +1,4 @@
-mod error;
-
+use miette::GraphicalReportHandler;
 use rustyline::error::ReadlineError;
 use rustyline::{DefaultEditor, Result};
 use sql_jr_parser::commands::ast::SqlQuery;
@@ -17,9 +16,15 @@ fn main() -> Result<()> {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                match SqlQuery::parse_from_raw(line.as_ref()) {
+                match SqlQuery::parse_format_error(line.as_ref()) {
                     Ok(q) => println!("{q:?}"),
-                    Err(e) => eprintln!("{e:?}"),
+                    Err(e) => {
+                        let mut s = String::new();
+                        GraphicalReportHandler::new()
+                            .render_report(&mut s, &e)
+                            .unwrap();
+                        println!("{s}");
+                    }
                 }
                 rl.add_history_entry(line.as_str())
                     .expect("Could not add line to history");
